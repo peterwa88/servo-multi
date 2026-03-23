@@ -1,0 +1,16 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  servo-src-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Check servo_src workspace
+        run: |
+          cargo fmt --manifest-path servo_src/Cargo.toml --all --check
+          cargo test --manifest-path servo_src/Cargo.toml --workspace

@@ -1,0 +1,13 @@
+name: claude-devloop
+
+on:
+  issue_comment:
+    types: [created]
+  issues:
+    types: [opened, edited]
+
+jobs:
+  placeholder:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Install Claude GitHub app and wire this workflow to your preferred Claude automation path."
