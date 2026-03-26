@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>多语言测试页面 - Multilingual Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #333;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            border-left: 4px solid #0066cc;
+            background: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+    <h1>多语言测试页面</h1>
+    <p><strong>Multilingual Test Page</strong></p>
+
+    <div class="section">
+        <h2>English Section</h2>
+        <p>This section demonstrates English text rendering in Servo.</p>
+        <p>Basic text formatting should work correctly.</p>
+    </div>
+
+    <div class="section">
+        <h2>中文部分</h2>
+        <p>此部分演示了中文文本在Servo中的渲染效果。</p>
+        <p>确保中文字符能够正确显示。</p>
+    </div>
+
+    <div class="section">
+        <h2>Bilingual Content</h2>
+        <p>This is a <strong>English</strong> sentence mixed with 中文 text.</p>
+        <p>混合语言内容应该能够正确显示。</p>
+    </div>
+
+    <div class="section">
+        <h2>UTF-8 Testing</h2>
+        <p>测试各种UTF-8字符: 你好世界 Hello World</p>
+        <p>Test UTF-8 characters: 你好世界 Hello World</p>
+    </div>
+</body>
+</html>

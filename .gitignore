@@ -1,0 +1,7 @@
+
+# official Servo checkout
+servo_origin/
+
+# local build artifacts
+servo_src/target/
+memory/

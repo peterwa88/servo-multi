@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Navigation Test - Servo Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #333;
+        }
+        .link-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 5px;
+        }
+        .link {
+            display: block;
+            margin: 10px 0;
+            padding: 10px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            text-decoration: none;
+            color: #0066cc;
+        }
+        .link:hover {
+            background: #f0f0f0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Navigation Test Page</h1>
+    <p>This page contains test links for navigation functionality.</p>
+
+    <div class="link-section">
+        <h2>Internal Links</h2>
+        <a href="/fixtures/basic-page.html" class="link">Basic Page</a>
+        <a href="/fixtures/multilingual-test.html" class="link">Multilingual Test</a>
+        <a href="/fixtures/navigation-test.html" class="link">This Page (Reload)</a>
+    </div>
+
+    <div class="link-section">
+        <h2>External Links</h2>
+        <a href="https://servo.org" class="link" target="_blank">Servo Website (External)</a>
+        <a href="https://github.com/servo/servo" class="link" target="_blank">Servo GitHub (External)</a>
+    </div>
+
+    <div class="link-section">
+        <h2>Test Content</h2>
+        <p>This section tests link navigation and history management.</p>
+        <ul>
+            <li>Click links to test navigation</li>
+            <li>Use back button to test history</li>
+            <li>Test page reload functionality</li>
+        </ul>
+    </div>
+</body>
+</html>
