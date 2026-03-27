@@ -22,39 +22,26 @@ fn main() -> std::io::Result<()> {
     }
     println!("✓ servo_origin exists");
 
-    // Step 2: Check servoshell binary
-    let servoshell_path = format!("{}/ports/servoshell/target/release/servoshell.exe", servo_origin_path);
+    // Step 2: Check servoshell binary (try release first, then debug)
+    let servoshell_release = format!("{}/ports/servoshell/target/release/servoshell.exe", servo_origin_path);
+    let servoshell_debug = format!("{}/ports/servoshell/target/debug/servoshell.exe", servo_origin_path);
 
-    if !std::path::Path::new(&servoshell_path).exists() {
-        println!("⚠ Servo not yet built");
-        println!("To build servoshell, run:");
-        println!("  cd servo_origin");
-        println!("  python ./mach build servoshell");
-        println!("Note: On Windows, mach has limitations with case-sensitive paths.\n");
-        println!("This research driver will test the HTTP server and fixture serving only.");
-        println!("For full servoshell integration, complete the build first.\n");
-
-        // Test HTTP server and fixtures without servoshell
-        test_http_server(&project_root);
+    let servoshell_path = if std::path::Path::new(&servoshell_release).exists() {
+        println!("✓ Found servoshell in target/release\n");
+        servoshell_release
+    } else if std::path::Path::new(&servoshell_debug).exists() {
+        println!("✓ Found servoshell in target/debug\n");
+        servoshell_debug
     } else {
-        println!("✓ servoshell binary found\n");
+        println!("❌ Error: servoshell binary not found!");
+        println!("Please build servoshell first:");
+        println!("  cd servo_origin/ports/servoshell");
+        println!("  cargo build --target x86_64-pc-windows-msvc\n");
+        std::process::exit(1);
+    };
 
-        // Step 3: Start HTTP server for fixtures
-        println!("=== Starting HTTP server ===");
-        let server_root = project_root.clone();
-        let _server_thread = thread::spawn(move || {
-            start_http_server(server_root);
-        });
-
-        thread::sleep(Duration::from_millis(500));
-
-        // Step 4: Launch servoshell with test URL
-        println!("\n=== Launching Servo Browser ===");
-        launch_servoshell(&project_root);
-
-        println!("\n=== Cleaning up ===");
-        println!("✓ Research driver completed");
-    }
+    // Launch the browser
+    launch_servoshell(&project_root, &servoshell_path);
 
     Ok(())
 }
@@ -236,54 +223,62 @@ fn handle_client(mut stream: TcpStream, project_root: &str) -> std::io::Result<(
     stream.flush()
 }
 
-fn launch_servoshell(project_root: &str) {
-    println!("Launching servoshell with http://127.0.0.1:8888/fixtures/multilingual-test.html\n");
+fn launch_servoshell(project_root: &str, servoshell_path: &str) {
+    // Use Windows file:// URL format
+    let target_url = "file:///D:/workspace/claude/servo-multi/servo_src/fixtures/multilingual-test.html";
 
-    let servoshell_path = format!("{}/servo_origin/ports/servoshell/target/release/servoshell.exe", project_root);
-    let target_url = "http://127.0.0.1:8888/fixtures/multilingual-test.html";
-
-    println!("Command: {}", servoshell_path);
-    println!("Target URL: {}", target_url);
-    println!("Logging servoshell output:\n");
+    println!("=== Launching Servo Browser ===");
+    println!("Browser: {}", servoshell_path);
+    println!("URL: {}", target_url);
+    println!("==================================\n");
 
     let mut child = match Command::new(&servoshell_path)
         .args(&[target_url])
-        .current_dir(&format!("{}/servo_origin", project_root))
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
     {
-        Ok(child) => child,
+        Ok(child) => {
+            println!("✓ Browser launched successfully\n");
+            child
+        }
         Err(e) => {
-            eprintln!("❌ Failed to spawn servoshell: {}", e);
-            return;
+            eprintln!("❌ Failed to launch browser: {}", e);
+            std::process::exit(1);
         }
     };
 
-    // Capture and print output in real-time
+    // Capture and log output
     if let (Some(stdout), Some(stderr)) = (child.stdout.take(), child.stderr.take()) {
         let stdout_reader = BufReader::new(stdout);
         let stderr_reader = BufReader::new(stderr);
 
+        println!("=== Browser Output ===\n");
         for line in stdout_reader.lines().chain(stderr_reader.lines()) {
             if let Ok(line) = line {
-                println!("{}", line);
+                // Filter out noise
+                if !line.contains("GLFW") && !line.contains("wayland") && !line.is_empty() {
+                    println!("{}", line);
+                }
             }
         }
+        println!("\n=== Output captured ===");
     }
 
-    // Wait for servoshell to complete
+    // Keep browser running for user interaction
+    println!("\n⚠ Browser is running. Close the browser window to exit.");
+    println!("The research driver will exit when you close the browser.\n");
+
+    // Wait for process to complete
     match child.wait() {
         Ok(status) => {
-            println!("\nServoshell exited with status: {}", status);
-            if status.success() {
-                println!("✓ Servo browser exited normally");
-            } else {
-                println!("⚠ Servo browser exited with errors");
+            println!("Browser exited with status: {}", status);
+            if !status.success() {
+                println!("⚠ Browser encountered errors during runtime");
             }
         }
         Err(e) => {
-            eprintln!("⚠ Error waiting for servoshell: {}", e);
+            eprintln!("⚠ Error waiting for browser: {}", e);
         }
     }
 }
