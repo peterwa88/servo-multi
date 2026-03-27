@@ -81,6 +81,9 @@ fn test_http_server(_project_root: &str) {
         "/api/navigation/reset",
         "/api/navigation/forward",
         "/api/navigation/back",
+        "/api/browser/screenshot",
+        "/api/browser/dom_dump",
+        "/api/network/log",
     ];
 
     for request_path in test_requests {
@@ -170,6 +173,24 @@ fn handle_client(mut stream: TcpStream, project_root: &str) -> std::io::Result<(
 
     if path == "/api/navigation/back" {
         let response = b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 29\r\n\r\n{\"status\":\"backed\"}";
+        stream.write_all(response)?;
+        return Ok(());
+    }
+
+    if path == "/api/browser/screenshot" {
+        let response = b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 33\r\n\r\n{\"status\":\"screenshot_saved\"}";
+        stream.write_all(response)?;
+        return Ok(());
+    }
+
+    if path == "/api/browser/dom_dump" {
+        let response = b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 32\r\n\r\n{\"status\":\"dom_dump_ready\"}";
+        stream.write_all(response)?;
+        return Ok(());
+    }
+
+    if path == "/api/network/log" {
+        let response = b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 29\r\n\r\n{\"status\":\"network_logged\"}";
         stream.write_all(response)?;
         return Ok(());
     }
