@@ -78,6 +78,9 @@ fn test_http_server(_project_root: &str) {
         "/",
         "/fixtures/basic-page.html",
         "/fixtures/multilingual-test.html",
+        "/api/navigation/reset",
+        "/api/navigation/forward",
+        "/api/navigation/back",
     ];
 
     for request_path in test_requests {
@@ -152,12 +155,36 @@ fn handle_client(mut stream: TcpStream, project_root: &str) -> std::io::Result<(
     let _method = parts.next().unwrap_or("");
     let path = parts.next().unwrap_or("/");
 
+    // Handle API endpoints
+    if path == "/api/navigation/reset" {
+        let response = b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 30\r\n\r\n{\"status\":\"reset\"}";
+        stream.write_all(response)?;
+        return Ok(());
+    }
+
+    if path == "/api/navigation/forward" {
+        let response = b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 31\r\n\r\n{\"status\":\"forwarded\"}";
+        stream.write_all(response)?;
+        return Ok(());
+    }
+
+    if path == "/api/navigation/back" {
+        let response = b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 29\r\n\r\n{\"status\":\"backed\"}";
+        stream.write_all(response)?;
+        return Ok(());
+    }
+
     let fixtures_path = format!("{}/servo_src/fixtures", project_root);
     let absolute_path = if path == "/" {
         format!("{}/basic-page.html", fixtures_path)
     } else if path.starts_with("fixtures/") {
         let file_path = format!("fixtures/{}", path.trim_start_matches('/'));
         format!("{}/{}", fixtures_path, file_path)
+    } else if path.starts_with("/api/navigation/") {
+        // Navigation control API endpoints - return success response
+        let response = b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 30\r\n\r\n{\"status\":\"received\"}";
+        stream.write_all(response)?;
+        return Ok(());
     } else {
         return Ok(());
     };
