@@ -1,0 +1,64 @@
+/* CJK Font Fallback Stylesheet for Servo Browser
+ * This stylesheet ensures proper font rendering for Chinese and CJK characters
+ * in window titles, page titles, and other text elements.
+ */
+
+/* Title elements - both window title and <title> tag */
+title, [role="heading"] {
+    font-family: "Microsoft YaHei", "SimSun", "Segoe UI Emoji", "Segoe UI Symbol",
+                  "Arial Unicode MS", "PingFang SC", "Noto Sans CJK SC", Arial, sans-serif !important;
+}
+
+/* HTML title tag specifically */
+title {
+    font-family: "Microsoft YaHei", "SimSun", "Segoe UI Emoji", "Segoe UI Symbol",
+                  "Arial Unicode MS", "PingFang SC", "Noto Sans CJK SC", Arial, sans-serif !important;
+}
+
+/* Page content headings */
+h1, h2, h3, h4, h5, h6 {
+    font-family: "Microsoft YaHei", "SimSun", "Segoe UI Emoji", "Segoe UI Symbol",
+                  "Arial Unicode MS", "PingFang SC", "Noto Sans CJK SC", Arial, sans-serif !important;
+}
+
+/* Default text content */
+body, p, div, span, a {
+    font-family: "Microsoft YaHei", "SimSun", "Segoe UI Emoji", "Segoe UI Symbol",
+                  "Arial Unicode MS", "PingFang SC", "Noto Sans CJK SC", Arial, sans-serif !important;
+}
+
+/* Meta tags */
+meta {
+    font-family: "Microsoft YaHei", "SimSun", "Segoe UI Emoji", "Segoe UI Symbol",
+                  "Arial Unicode MS", "PingFang SC", "Noto Sans CJK SC", Arial, sans-serif !important;
+}
+
+/* Chinese character fallback explicitly */
+[lang="zh-CN"],
+[lang="zh-TW"],
+[lang="zh-HK"],
+[lang="zh"],
+[lang="ja"],
+[lang="ko"] {
+    font-family: "Microsoft YaHei", "SimSun", "Segoe UI Emoji", "Segoe UI Symbol",
+                  "Arial Unicode MS", "PingFang SC", "Noto Sans CJK SC", Arial, sans-serif !important;
+}
+
+/* Force Unicode normalization and proper encoding display */
+:lang(zh) {
+    font-family: "Microsoft YaHei", "SimSun", "Segoe UI Emoji", "Segoe UI Symbol",
+                  "Arial Unicode MS", "PingFang SC", "Noto Sans CJK SC", Arial, sans-serif !important;
+}
+
+/* Fallback for square box glyphs - use system fonts */
+::placeholder,
+::selection {
+    font-family: "Microsoft YaHei", "SimSun", "Segoe UI Emoji", "Segoe UI Symbol",
+                  "Arial Unicode MS", "PingFang SC", "Noto Sans CJK SC", Arial, sans-serif !important;
+}
+
+/* Icon and symbol fonts */
+[class*="icon"], [class*="iconfont"], [class*="font-icon"],
+[class^="icon"], [class^="iconfont"], [class^="font-icon"] {
+    font-family: "Segoe UI Emoji", "Segoe UI Symbol", "Arial Unicode MS", sans-serif !important;
+}
