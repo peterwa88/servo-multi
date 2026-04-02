@@ -49,8 +49,5 @@ echo
 # Set PATH to include runtime DLLs
 export PATH="./runtime:$PATH"
 
-# Set user stylesheet for CJK font fallback
-export SERVO_USER_STYLESHEET="/d/workspace/claude/servo-multi/servo_src/fixtures/cjk-font-fallback.css"
-
-# Launch servoshell with CJK font fallback
-"./servoshell.exe" --user-stylesheet "$SERVO_USER_STYLESHEET" "$URL"
+# Launch servoshell with CJK font fallback (using CSS only)
+"./servoshell.exe" --user-stylesheet "/d/workspace/claude/servo-multi/servo_src/fixtures/cjk-font-fallback.css" "$URL"

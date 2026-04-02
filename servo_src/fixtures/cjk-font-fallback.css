@@ -3,8 +3,15 @@
  * in window titles, page titles, and other text elements.
  */
 
+/* Global fallback - try to catch everything */
+*, *::before, *::after {
+    font-family: "Microsoft YaHei", "SimSun", "Segoe UI Emoji", "Segoe UI Symbol",
+                  "Arial Unicode MS", "PingFang SC", "Noto Sans CJK SC", Arial, sans-serif !important;
+}
+
 /* Title elements - both window title and <title> tag */
-title, [role="heading"] {
+title, [role="heading"], [role="tooltip"], [role="alert"],
+::backdrop, [data-tooltip], .tooltip {
     font-family: "Microsoft YaHei", "SimSun", "Segoe UI Emoji", "Segoe UI Symbol",
                   "Arial Unicode MS", "PingFang SC", "Noto Sans CJK SC", Arial, sans-serif !important;
 }
@@ -22,7 +29,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* Default text content */
-body, p, div, span, a {
+body, p, div, span, a, li, td, th {
     font-family: "Microsoft YaHei", "SimSun", "Segoe UI Emoji", "Segoe UI Symbol",
                   "Arial Unicode MS", "PingFang SC", "Noto Sans CJK SC", Arial, sans-serif !important;
 }
@@ -61,4 +68,10 @@ meta {
 [class*="icon"], [class*="iconfont"], [class*="font-icon"],
 [class^="icon"], [class^="iconfont"], [class^="font-icon"] {
     font-family: "Segoe UI Emoji", "Segoe UI Symbol", "Arial Unicode MS", sans-serif !important;
+}
+
+/* Debug mode for development */
+#debug-ui, [data-debug] {
+    font-family: "Microsoft YaHei", "SimSun", "Segoe UI Emoji", "Segoe UI Symbol",
+                  "Arial Unicode MS", "PingFang SC", "Noto Sans CJK SC", Arial, sans-serif !important;
 }
