@@ -2,12 +2,14 @@
 set -euo pipefail
 
 # ============================================================
-# Servo Product Build Script
-# - Forces Clang 17
-# - Forces MSVC toolset 14.36.32532
-# - Builds product_src from servo_origin
-# - Applies overlay patches from servo_src/product_overlay
-# - Packages final runtime into servo_src/
+# Servo Product Build Script (Git Bash)
+# - Uses Clang 17
+# - Uses MSVC toolset 14.36.32532
+# - Keeps servo_src/product_src as maintained product source
+# - Copies from servo_origin only when missing or when user confirms
+# - Applies overlay + patch scripts
+# - Forces final linker to link.exe
+# - Packages final runtime into servo_src/runtime
 # ============================================================
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -15,32 +17,29 @@ SERVO_SRC="$ROOT/servo_src"
 UPSTREAM="$ROOT/servo_origin"
 PRODUCT_SRC="$SERVO_SRC/product_src"
 OVERLAY="$SERVO_SRC/product_overlay"
-OUT_EXE="$SERVO_SRC/servoshell.exe"
 OUT_RUNTIME="$SERVO_SRC/runtime"
+OUT_EXE="$OUT_RUNTIME/servoshell.exe"
 
-# ---- Fixed toolchain paths (based on your machine) ----
 LLVM_BIN_WIN='C:\LLVM\bin'
 VSDEVCMD_WIN='D:\ProgramFiles\VisualStudio\2022\Professional\Common7\Tools\VsDevCmd.bat'
 VCVARS_VER='14.36'
 MSVC_EXPECTED_DIR='D:\ProgramFiles\VisualStudio\2022\Professional\VC\Tools\MSVC\14.36.32532'
 
-# ---- Helper: convert Git Bash path to Windows path ----
 to_win() {
   cygpath -aw "$1"
 }
 
 echo "============================================================"
-echo "Servo Product Build"
+echo "Servo Product Build (Git Bash)"
 echo "ROOT         : $ROOT"
 echo "SERVO_SRC    : $SERVO_SRC"
 echo "UPSTREAM     : $UPSTREAM"
 echo "PRODUCT_SRC  : $PRODUCT_SRC"
 echo "OVERLAY      : $OVERLAY"
-echo "OUT_EXE      : $OUT_EXE"
 echo "OUT_RUNTIME  : $OUT_RUNTIME"
+echo "OUT_EXE      : $OUT_EXE"
 echo "============================================================"
 
-# ---- Basic checks ----
 if [ ! -d "$UPSTREAM" ]; then
   echo "[ERROR] servo_origin not found: $UPSTREAM"
   exit 1
@@ -52,14 +51,12 @@ if [ ! -d "$SERVO_SRC" ]; then
 fi
 
 if [ ! -f "$VSDEVCMD_WIN" ]; then
-  echo "[ERROR] VsDevCmd.bat not found:"
-  echo "        $VSDEVCMD_WIN"
+  echo "[ERROR] VsDevCmd.bat not found: $VSDEVCMD_WIN"
   exit 1
 fi
 
 if [ ! -d "$MSVC_EXPECTED_DIR" ]; then
-  echo "[ERROR] Expected MSVC 14.36 toolset not found:"
-  echo "        $MSVC_EXPECTED_DIR"
+  echo "[ERROR] Expected MSVC 14.36 toolset not found: $MSVC_EXPECTED_DIR"
   exit 1
 fi
 
@@ -68,11 +65,16 @@ if [ ! -x /c/LLVM/bin/clang ] && [ ! -x /c/LLVM/bin/clang.exe ]; then
   exit 1
 fi
 
-PYTHON_BIN="$(command -v python || true)"
-if [ -z "$PYTHON_BIN" ]; then
-  echo "[ERROR] python not found in current shell PATH"
-  exit 1
+PYTHON_BIN="/c/Python314/python.exe"
+if [ ! -f "$PYTHON_BIN" ]; then
+  PYTHON_BIN="$(command -v python || true)"
+  if [ -z "$PYTHON_BIN" ]; then
+    echo "[ERROR] python not found in current shell PATH"
+    exit 1
+  fi
 fi
+
+export PYTHON3="$PYTHON_BIN"
 
 PYTHON_WIN="$(to_win "$PYTHON_BIN")"
 PRODUCT_SRC_WIN="$(to_win "$PRODUCT_SRC")"
@@ -80,45 +82,73 @@ PRODUCT_SRC_WIN="$(to_win "$PRODUCT_SRC")"
 echo "[DEBUG] Current bash python: $PYTHON_BIN"
 echo "[DEBUG] Windows python path : $PYTHON_WIN"
 
-# ---- Kill running browser processes to avoid file locks ----
-echo "[1/9] Killing running browser processes if any..."
+echo "[1/8] Killing running browser processes if any..."
 ps aux | grep -E "(servoshell|servo_browser)" | grep -v grep | awk '{print $2}' | xargs -r kill -9 || true
 
-# ---- Prepare product source ----
-echo "[2/9] Preparing product source tree..."
-rm -rf "$PRODUCT_SRC"
-mkdir -p "$PRODUCT_SRC"
+echo "[2/8] Preparing product source tree..."
+if [ ! -d "$PRODUCT_SRC" ]; then
+  echo "[INFO] product_src does not exist. Copying from servo_origin..."
+  mkdir -p "$PRODUCT_SRC"
+  cp -a "$UPSTREAM"/. "$PRODUCT_SRC"/
+else
+  echo "[INFO] product_src already exists."
+  echo "[INFO] Refresh product_src from servo_origin? Type 'y' to refresh, anything else to keep current product_src:"
+  read -r REFRESH_CHOICE || true
+  if [ "${REFRESH_CHOICE:-n}" = "y" ] || [ "${REFRESH_CHOICE:-n}" = "Y" ]; then
+    echo "[INFO] Refreshing product_src from servo_origin..."
+    rm -rf "$PRODUCT_SRC"
+    mkdir -p "$PRODUCT_SRC"
+    cp -a "$UPSTREAM"/. "$PRODUCT_SRC"/
+  else
+    echo "[INFO] Keeping existing product_src."
+  fi
+fi
 
-echo "[3/9] Copying upstream source into product_src..."
-cp -a "$UPSTREAM"/. "$PRODUCT_SRC"/
-
-# ---- Apply overlay source files ----
-echo "[4/9] Applying overlay files..."
+echo "[3/8] Applying overlay files..."
 if [ -d "$OVERLAY" ]; then
   cp -a "$OVERLAY"/. "$PRODUCT_SRC"/
 else
   echo "[WARN] No overlay directory found: $OVERLAY"
 fi
 
-# ---- Run patch scripts if present ----
-echo "[5/9] Running patch scripts if present..."
+echo "[4/8] Running patch scripts if present..."
 if [ -f "$OVERLAY/patch_font_system.sh" ]; then
+  echo "[INFO] Running patch_font_system.sh..."
   (cd "$PRODUCT_SRC" && bash "$OVERLAY/patch_font_system.sh")
 else
   echo "[INFO] No patch_font_system.sh found, skipping"
 fi
 
-# ---- Debug source tree before build ----
-echo "[6/9] Inspecting product source tree..."
-find "$PRODUCT_SRC" -maxdepth 4 -type d \( -name components -o -name gfx -o -name platform -o -name windows \) 2>/dev/null || true
-echo "[DEBUG] Searching key font-related identifiers..."
-grep -R "last_resort" -n "$PRODUCT_SRC/components" 2>/dev/null | head -30 || true
-grep -R "cjk_fallback" -n "$PRODUCT_SRC/components" 2>/dev/null | head -30 || true
-grep -R "FontContext" -n "$PRODUCT_SRC/components" 2>/dev/null | head -30 || true
-grep -R "FontGroup" -n "$PRODUCT_SRC/components" 2>/dev/null | head -30 || true
+if [ -f "$SERVO_SRC/apply_unicode_patch.py" ]; then
+  echo "[INFO] Running apply_unicode_patch.py..."
+  "$PYTHON_BIN" "$SERVO_SRC/apply_unicode_patch.py"
+else
+  echo "[INFO] No apply_unicode_patch.py found, skipping"
+fi
 
-# ---- Build using fixed VS 14.36 + Clang 17 ----
-echo "[7/9] Building with Clang 17 + MSVC 14.36..."
+if [ -f "$SERVO_SRC/apply_ui_clipboard_patch.py" ]; then
+  echo "[INFO] Running apply_ui_clipboard_patch.py..."
+  "$PYTHON_BIN" "$SERVO_SRC/apply_ui_clipboard_patch.py"
+else
+  echo "[INFO] No apply_ui_clipboard_patch.py found, skipping"
+fi
+
+if [ -f "$SERVO_SRC/apply_tab_egui_patch.py" ]; then
+  echo "[INFO] Running apply_tab_egui_patch.py..."
+  "$PYTHON_BIN" "$SERVO_SRC/apply_tab_egui_patch.py"
+else
+  echo "[INFO] No apply_tab_egui_patch.py found, skipping"
+fi
+
+echo "[5/8] Inspecting product source tree..."
+find "$PRODUCT_SRC" -maxdepth 4 -type d \( -name components -o -name fonts -o -name platform -o -name windows -o -name ports \) 2>/dev/null || true
+grep -R "fallback_font_families" -n "$PRODUCT_SRC/components" 2>/dev/null | head -20 || true
+grep -R "servo_extend_windows_cjk_fallbacks" -n "$PRODUCT_SRC/components" 2>/dev/null | head -20 || true
+
+echo "[6/8] Cleaning old target to avoid stale executable..."
+rm -rf "$PRODUCT_SRC/target"
+
+echo "[6/8] Building with Clang 17 + MSVC 14.36 + link.exe..."
 BUILD_CMD_FILE="$(mktemp --suffix=.cmd)"
 
 cat > "$BUILD_CMD_FILE" <<EOF
@@ -136,11 +166,18 @@ if errorlevel 1 (
 )
 
 set "PATH=$LLVM_BIN_WIN;%PATH%"
+set "CC=clang-cl"
+set "CXX=clang-cl"
+set "CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER=link.exe"
+set "RUSTFLAGS=-Clinker=link.exe"
+set "PYTHON3=$PYTHON_WIN"
 
 echo [DEBUG] where clang:
 where clang
 echo [DEBUG] where clang-cl:
 where clang-cl
+echo [DEBUG] where link:
+where link
 
 echo [DEBUG] clang version:
 clang --version
@@ -152,8 +189,9 @@ if errorlevel 1 exit /b 1
 
 echo [DEBUG] VCToolsVersion=%VCToolsVersion%
 echo [DEBUG] VCToolsInstallDir=%VCToolsInstallDir%
-echo [DEBUG] INCLUDE=%INCLUDE%
-echo [DEBUG] LIB=%LIB%
+echo [DEBUG] CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER=%CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER%
+echo [DEBUG] RUSTFLAGS=%RUSTFLAGS%
+echo [DEBUG] PYTHON3=%PYTHON3%
 
 cd /d "$PRODUCT_SRC_WIN"
 if errorlevel 1 (
@@ -161,11 +199,16 @@ if errorlevel 1 (
   exit /b 1
 )
 
+if not exist mach (
+  echo [ERROR] mach not found in product_src
+  exit /b 1
+)
+
 echo ============================================================
-echo [BUILD] Running Servo build
+echo [BUILD] Running local mach build
 echo ============================================================
 
-"$PYTHON_WIN" mach build --dev
+call mach build --dev
 if errorlevel 1 (
   echo [ERROR] Servo build failed
   exit /b 1
@@ -175,34 +218,85 @@ echo [OK] Build completed
 exit /b 0
 EOF
 
-cmd.exe /c "$BUILD_CMD_FILE"
+cmd.exe /c "$BUILD_CMD_FILE" || {
+  rm -f "$BUILD_CMD_FILE"
+  echo "[FATAL] Build failed"
+  exit 1
+}
 rm -f "$BUILD_CMD_FILE"
 
-# ---- Package executable ----
-echo "[8/9] Packaging executable and runtime artifacts..."
-mkdir -p "$OUT_RUNTIME"
+echo "[7/8] Packaging executable and runtime artifacts..."
+echo "[INFO] Searching for built servoshell.exe..."
+mapfile -t EXE_CANDIDATES < <(find "$PRODUCT_SRC/target" -type f -iname "servoshell.exe" 2>/dev/null)
 
-if [ ! -f "$PRODUCT_SRC/target/debug/servoshell.exe" ]; then
-  echo "[ERROR] Built executable not found:"
-  echo "        $PRODUCT_SRC/target/debug/servoshell.exe"
+if [ ${#EXE_CANDIDATES[@]} -eq 0 ]; then
+  echo "[ERROR] No servoshell.exe found under target directory!"
+  echo "[DEBUG] Listing target directory structure:"
+  find "$PRODUCT_SRC/target" -maxdepth 4 -type d | head -80
   exit 1
 fi
 
-cp -f "$PRODUCT_SRC/target/debug/servoshell.exe" "$OUT_EXE"
+echo "[INFO] Found ${#EXE_CANDIDATES[@]} candidate(s):"
+for exe in "${EXE_CANDIDATES[@]}"; do
+  echo "  - $exe"
+done
 
-# Clean old runtime
-find "$OUT_RUNTIME" -mindepth 1 -maxdepth 1 -exec rm -rf {} + || true
+LATEST_EXE=""
+LATEST_TIME=0
+for exe in "${EXE_CANDIDATES[@]}"; do
+  t=$(stat -c %Y "$exe")
+  if [ "$t" -gt "$LATEST_TIME" ]; then
+    LATEST_TIME="$t"
+    LATEST_EXE="$exe"
+  fi
+done
 
-# Copy debug output DLLs/PDBs
-find "$PRODUCT_SRC/target/debug" -maxdepth 1 -type f \( -iname '*.dll' -o -iname '*.pdb' \) -exec cp -f {} "$OUT_RUNTIME/" \; || true
+echo "[INFO] Selected latest executable:"
+echo "       $LATEST_EXE"
+stat "$LATEST_EXE"
 
-# Copy resources if present
-if [ -d "$PRODUCT_SRC/resources" ]; then
-  mkdir -p "$OUT_RUNTIME/resources"
-  cp -a "$PRODUCT_SRC/resources"/. "$OUT_RUNTIME/resources"/
+PATCH_FILE="$PRODUCT_SRC/components/fonts/font_context.rs"
+if [ -f "$PATCH_FILE" ]; then
+  PATCH_TIME=$(stat -c %Y "$PATCH_FILE")
+  if [ "$LATEST_TIME" -lt "$PATCH_TIME" ]; then
+    echo "[ERROR] Executable is older than patched source."
+    exit 1
+  else
+    echo "[OK] Executable is newer than patched source."
+  fi
 fi
 
-# Copy GStreamer runtime if available
+NOW=$(date +%s)
+DELTA=$((NOW - LATEST_TIME))
+echo "[DEBUG] Build time delta: $DELTA seconds"
+if [ "$DELTA" -gt 600 ]; then
+  echo "[ERROR] Executable is not freshly built (older than 10 minutes)."
+  exit 1
+else
+  echo "[OK] Fresh executable confirmed."
+fi
+
+echo "[INFO] Cleaning runtime directory..."
+rm -rf "$OUT_RUNTIME"
+mkdir -p "$OUT_RUNTIME"
+
+cp -f "$LATEST_EXE" "$OUT_EXE"
+if [ ! -f "$OUT_EXE" ]; then
+  echo "[ERROR] Failed to copy executable to $OUT_EXE"
+  exit 1
+fi
+
+echo "[INFO] Copying runtime DLLs/PDBs..."
+find "$PRODUCT_SRC/target" -type f \( -iname '*.dll' -o -iname '*.pdb' \) -exec cp -f {} "$OUT_RUNTIME/" \; || true
+
+if [ -d "$PRODUCT_SRC/resources" ]; then
+  echo "[INFO] Copying resources..."
+  mkdir -p "$OUT_RUNTIME/resources"
+  cp -a "$PRODUCT_SRC/resources"/. "$OUT_RUNTIME/resources"/
+else
+  echo "[WARN] No resources directory found in product_src"
+fi
+
 if [ -n "${GSTREAMER_1_0_ROOT_MSVC_X86_64:-}" ] && [ -d "${GSTREAMER_1_0_ROOT_MSVC_X86_64}/bin" ]; then
   echo "[INFO] Copying GStreamer runtime DLLs..."
   find "${GSTREAMER_1_0_ROOT_MSVC_X86_64}/bin" -maxdepth 1 -type f -iname '*.dll' -exec cp -f {} "$OUT_RUNTIME/" \; || true
@@ -210,7 +304,6 @@ else
   echo "[INFO] GSTREAMER_1_0_ROOT_MSVC_X86_64 not set or invalid, skipping GStreamer DLL copy"
 fi
 
-# Copy MSVC redistributables if available
 if [ -n "${WIN32_REDIST_DIR:-}" ] && [ -d "${WIN32_REDIST_DIR}" ]; then
   echo "[INFO] Copying MSVC redistributable DLLs..."
   find "${WIN32_REDIST_DIR}" -maxdepth 1 -type f -iname '*.dll' -exec cp -f {} "$OUT_RUNTIME/" \; || true
@@ -218,8 +311,7 @@ else
   echo "[INFO] WIN32_REDIST_DIR not set or invalid, skipping redist DLL copy"
 fi
 
-# ---- Final report ----
-echo "[9/9] Build complete."
+echo "[8/8] Build complete."
 echo
 echo "Executable:"
 ls -lh "$OUT_EXE"
@@ -234,9 +326,8 @@ echo
 echo "============================================================"
 echo "NEXT STEP"
 echo "============================================================"
-echo "Run with:"
-echo "  cd \"$SERVO_SRC\""
-echo "  export PATH=\"./runtime:\$PATH\""
-echo "  ./servoshell.exe file:///D:/workspace/claude/servo-multi/servo_src/fixtures/multilingual-test.html"
+echo "Run with Windows CMD:"
+echo "  cd D:\\workspace\\claude\\servo-multi\\servo_src\\runtime"
+echo "  servoshell.exe file:///D:/workspace/claude/servo-multi/servo_src/fixtures/multilingual-test.html"
 echo
-echo "If build succeeds, then continue Unicode/CJK validation."
+echo "If Unicode or tab/chrome text is still wrong, continue source-level patching and rebuild from existing product_src."

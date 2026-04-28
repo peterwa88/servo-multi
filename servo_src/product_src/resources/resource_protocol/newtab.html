@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Servo - New Tab</title>
+    <link rel="stylesheet" href="resource:///newtab.css" />
+  <script id="servo-ui-keyboard-clipboard-patch">
+document.addEventListener("keydown", function(e) {
+  const ctrl = e.ctrlKey || e.metaKey;
+  if (!ctrl) return;
+
+  const key = (e.key || "").toLowerCase();
+
+  // Allow default browser editing shortcuts in editable regions
+  const active = document.activeElement;
+  const editable =
+    active &&
+    (
+      active.tagName === "INPUT" ||
+      active.tagName === "TEXTAREA" ||
+      active.isContentEditable
+    );
+
+  if (key === "a" || key === "c" || key === "v" || key === "x") {
+    if (editable) {
+      return;
+    }
+
+    // For non-editable page text, allow select all and copy
+    if (key === "a") {
+      try {
+        const range = document.createRange();
+        range.selectNodeContents(document.body);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        e.preventDefault();
+      } catch (_) {}
+      return;
+    }
+
+    if (key === "c") {
+      try {
+        const sel = window.getSelection();
+        const text = sel ? sel.toString() : "";
+        if (text && navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).catch(() => {});
+        }
+      } catch (_) {}
+      return;
+    }
+  }
+}, true);
+</script>
+</head>
+  <body>
+    <a href="https://servo.org">
+      <img class="light" src="resource:///servo-color-positive-no-container.svg" draggable="false"/>
+      <img class="dark" src="resource:///servo-color-negative-no-container.svg" draggable="false"/>
+    </a>
+    <form action="https://duckduckgo.com/html/">
+      <input name="q" placeholder="Search the web…" autofocus />
+      <button type="submit">Go!</button>
+    </form>
+    <a href="https://servo.org">Home</a>
+  </body>
+</html>

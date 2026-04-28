@@ -1142,9 +1142,9 @@ impl Hash for FontGroupCacheKey {
     }
 }
 
-// ===== servo_src CJK patch injected ====
+// ===== servo_src CJK patch injected =====
 
-pub fn servo_extend_windows_cjk_fallbacks(families: &mut Vec<&'static str>) {
+fn servo_extend_windows_cjk_fallbacks(families: &mut Vec<&'static str>) {
 
     let preferred = [
 
@@ -1220,4 +1220,4 @@ pub fn servo_extend_windows_cjk_fallbacks(families: &mut Vec<&'static str>) {
 
 }
 
-// ===== end servo_src CJK patch ====
+// ===== end servo_src CJK patch =====
